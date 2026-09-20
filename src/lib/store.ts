@@ -29,12 +29,13 @@ const SESSION_COOKIE = "pmvic_session";
 
 function setSessionCookie(session: Session | null) {
   if (typeof document === "undefined") return;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
   if (!session) {
-    document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0`;
+    document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; SameSite=Lax${secure}`;
     return;
   }
   const value = encodeURIComponent(JSON.stringify(session));
-  document.cookie = `${SESSION_COOKIE}=${value}; path=/; max-age=${60 * 60 * 24 * 7}`;
+  document.cookie = `${SESSION_COOKIE}=${value}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax${secure}`;
 }
 
 function genId(prefix: string) {
