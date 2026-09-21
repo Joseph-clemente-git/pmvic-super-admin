@@ -201,7 +201,7 @@ function TransactionsContent() {
     <div className="space-y-6">
       <PageHeader
         title="Transaction History"
-        description="Track branch outstanding balances and record remittance payments."
+        description="Track branch earnings owed and record remittance payouts."
         actions={<ProcessRemittanceDialog />}
       />
 

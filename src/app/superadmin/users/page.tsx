@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { MoreHorizontal, Power, Send, ShieldCheck } from "lucide-react";
+import { MoreHorizontal, Power, Send, ShieldCheck, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -35,13 +36,16 @@ export default function UsersPage() {
   const users = useStore((s) => s.users);
   const organizations = useStore((s) => s.organizations);
   const branches = useStore((s) => s.branches);
+  const session = useStore((s) => s.session);
   const updateUserRole = useStore((s) => s.updateUserRole);
   const setUserStatus = useStore((s) => s.setUserStatus);
   const resendInvite = useStore((s) => s.resendInvite);
+  const removeUser = useStore((s) => s.removeUser);
   const hasHydrated = useStore((s) => s.hasHydrated);
 
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [userToRemove, setUserToRemove] = useState<AppUser | null>(null);
 
   const orgName = (id: string | null) => organizations.find((o) => o.id === id)?.name ?? "—";
   const branchName = (id: string | null) => branches.find((b) => b.id === id)?.name ?? "—";
@@ -122,13 +126,24 @@ export default function UsersPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Assign role</DropdownMenuLabel>
-            {(["superadmin", "org_admin", "branch_admin"] as Role[]).map((r) => (
-              <DropdownMenuItem key={r} disabled={u.role === r} onClick={() => handleRoleChange(u, r)}>
-                <ShieldCheck /> {r.replace("_", " ")}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
+            {u.role === "branch_admin" ? (
+              <>
+                <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">
+                  Branch admins are managed by the organization in their own portal.
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+              </>
+            ) : (
+              <>
+                <DropdownMenuLabel>Assign role</DropdownMenuLabel>
+                {(["superadmin", "org_admin"] as Role[]).map((r) => (
+                  <DropdownMenuItem key={r} disabled={u.role === r} onClick={() => handleRoleChange(u, r)}>
+                    <ShieldCheck /> {r.replace("_", " ")}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+              </>
+            )}
             {u.status === "invited" ? (
               <DropdownMenuItem onClick={() => { resendInvite(u.id); toast.success(`Invitation resent to ${u.email}.`); }}>
                 <Send /> Resend invitation
@@ -138,6 +153,14 @@ export default function UsersPage() {
                 <Power /> {u.status === "active" ? "Deactivate" : "Activate"}
               </DropdownMenuItem>
             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={u.id === session?.userId}
+              onClick={() => setUserToRemove(u)}
+            >
+              <Trash2 /> Remove user
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -148,7 +171,7 @@ export default function UsersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Users & Access Management"
-        description="Manage organization users, admins, and pending invitations."
+        description="Invite organization tenant owners and manage SuperAdmin access. Branch admins are managed by each organization in their own portal."
         actions={<InviteUserDialog />}
       />
 
@@ -171,7 +194,6 @@ export default function UsersPage() {
                   <SelectItem value="all">All roles</SelectItem>
                   <SelectItem value="superadmin">SuperAdmin</SelectItem>
                   <SelectItem value="org_admin">Organization Admin</SelectItem>
-                  <SelectItem value="branch_admin">Branch Admin</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
@@ -189,6 +211,21 @@ export default function UsersPage() {
           }
         />
       </div>
+
+      <ConfirmDialog
+        open={!!userToRemove}
+        onOpenChange={(v) => !v && setUserToRemove(null)}
+        title={`Remove ${userToRemove?.name}?`}
+        description={`${userToRemove?.email} will lose access and be removed from this list. This can't be undone.`}
+        destructive
+        confirmLabel="Remove"
+        onConfirm={() => {
+          if (!userToRemove) return;
+          removeUser(userToRemove.id);
+          toast.success(`${userToRemove.name} was removed.`);
+          setUserToRemove(null);
+        }}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Loader2, UserPlus } from "lucide-react";
+import { Check, Copy, Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -23,39 +23,40 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useStore } from "@/lib/store";
-import type { Role } from "@/types";
+
+const TENANT_PORTAL_URL = "https://portal.staclara-pmvic.ph";
+
+function genToken() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+}
 
 export function InviteUserDialog() {
   const organizations = useStore((s) => s.organizations);
-  const branches = useStore((s) => s.branches);
   const inviteUser = useStore((s) => s.inviteUser);
 
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("org_admin");
   const [orgId, setOrgId] = useState<string>("");
-  const [branchId, setBranchId] = useState<string>("");
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const orgBranches = branches.filter((b) => b.orgId === orgId);
+  const selectedOrg = organizations.find((o) => o.id === orgId) ?? null;
 
   function reset() {
     setName("");
     setEmail("");
-    setRole("org_admin");
     setOrgId("");
-    setBranchId("");
+    setInviteLink(null);
+    setCopied(false);
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (role !== "superadmin" && !orgId) {
-      toast.error("Please select an organization for this role.");
-      return;
-    }
-    if (role === "branch_admin" && !branchId) {
-      toast.error("Please select a branch for this role.");
+    if (!orgId) {
+      toast.error("Please select an organization for this account.");
       return;
     }
     setIsSubmitting(true);
@@ -64,14 +65,29 @@ export function InviteUserDialog() {
       inviteUser({
         name,
         email,
-        role,
-        orgId: role === "superadmin" ? null : orgId,
-        branchId: role === "branch_admin" ? branchId : null,
+        role: "org_admin",
+        orgId,
+        branchId: null,
       });
-      toast.success(`Invitation sent to ${email}.`);
-      setOpen(false);
-      reset();
+      setInviteLink(`${TENANT_PORTAL_URL}/accept-invite/${genToken()}?org=${selectedOrg?.code ?? orgId}`);
     }, 500);
+  }
+
+  async function handleCopy() {
+    if (!inviteLink) return;
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied(true);
+      toast.success("Invitation link copied.");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Couldn't copy the link. Copy it manually instead.");
+    }
+  }
+
+  function handleClose() {
+    setOpen(false);
+    reset();
   }
 
   return (
@@ -84,55 +100,68 @@ export function InviteUserDialog() {
     >
       <DialogTrigger asChild>
         <Button>
-          <UserPlus /> Invite User
+          <UserPlus /> Invite Tenant Owner
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Invite a new user</DialogTitle>
-            <DialogDescription>Send an invitation and assign an appropriate role and organization.</DialogDescription>
-          </DialogHeader>
+        {inviteLink ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Invitation link ready</DialogTitle>
+              <DialogDescription>
+                Share this link with {name || "the new tenant owner"} to set up their organization admin account on
+                the organization portal. They&apos;ll create their own branch admins from there — that&apos;s outside
+                of this app.
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="invite-name">Full name</Label>
-              <Input id="invite-name" required value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="invite-email">Email address</Label>
-              <Input
-                id="invite-email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="superadmin">SuperAdmin</SelectItem>
-                  <SelectItem value="org_admin">Organization Admin</SelectItem>
-                  <SelectItem value="branch_admin">Branch Admin</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-2 py-4">
+              <Label htmlFor="invite-link">Invitation link</Label>
+              <div className="flex items-center gap-2">
+                <Input id="invite-link" readOnly value={inviteLink} className="font-mono text-xs" />
+                <Button type="button" variant="outline" size="icon" onClick={handleCopy} aria-label="Copy invitation link">
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This is a demo link and isn&apos;t emailed automatically — copy it and send it yourself.
+              </p>
             </div>
 
-            {role !== "superadmin" ? (
+            <DialogFooter>
+              <Button type="button" onClick={handleClose}>
+                Done
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>Invite a tenant owner</DialogTitle>
+              <DialogDescription>
+                Creates the Organization Admin account for a tenant&apos;s own portal. Branch admins are managed by
+                that organization inside their portal, not here.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="invite-name">Full name</Label>
+                <Input id="invite-name" required value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="invite-email">Email address</Label>
+                <Input
+                  id="invite-email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
               <div className="space-y-2">
                 <Label>Organization</Label>
-                <Select
-                  value={orgId}
-                  onValueChange={(v) => {
-                    setOrgId(v);
-                    setBranchId("");
-                  }}
-                >
+                <Select value={orgId} onValueChange={setOrgId}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select organization" />
                   </SelectTrigger>
@@ -145,37 +174,19 @@ export function InviteUserDialog() {
                   </SelectContent>
                 </Select>
               </div>
-            ) : null}
+            </div>
 
-            {role === "branch_admin" ? (
-              <div className="space-y-2">
-                <Label>Branch</Label>
-                <Select value={branchId} onValueChange={setBranchId} disabled={!orgId}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={orgId ? "Select branch" : "Select organization first"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {orgBranches.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : null}
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Send invitation
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Generate invitation link
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

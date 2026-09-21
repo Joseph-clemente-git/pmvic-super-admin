@@ -178,7 +178,7 @@ export default function SuperAdminDashboardPage() {
           value={String(stats.pendingRemit)}
           icon={AlertTriangle}
           tone={stats.pendingRemit > 0 ? "warning" : "default"}
-          hint="Branches with unpaid outstanding balance"
+          hint="Branches with earnings pending remittance"
         />
       </div>
 

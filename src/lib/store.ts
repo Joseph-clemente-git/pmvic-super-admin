@@ -89,6 +89,7 @@ interface AppState {
   updateUserRole: (id: string, role: Role) => void;
   setUserStatus: (id: string, status: "active" | "inactive") => void;
   resendInvite: (id: string) => void;
+  removeUser: (id: string) => void;
 
   remitPayment: (input: {
     branchId: string;
@@ -265,6 +266,10 @@ export const useStore = create<AppState>()(
         }));
       },
 
+      removeUser: (id) => {
+        set((state) => ({ users: state.users.filter((u) => u.id !== id) }));
+      },
+
       remitPayment: (input) => {
         if (input.amount <= 0) {
           return { ok: false, error: "Amount must be greater than zero." };
@@ -310,8 +315,8 @@ export const useStore = create<AppState>()(
           notifications: [
             makeNotification(
               "remittance",
-              isFullySettled ? "Branch fully remitted" : "Partial remittance received",
-              `₱${input.amount.toLocaleString()} remitted by ${branch.name} (${org?.name ?? "Unknown org"})${isFullySettled ? " — outstanding balance settled." : `, ₱${(outstanding - input.amount).toLocaleString()} still outstanding.`}`,
+              isFullySettled ? "Branch fully remitted" : "Partial remittance sent",
+              `₱${input.amount.toLocaleString()} remitted to ${branch.name} (${org?.name ?? "Unknown org"})${isFullySettled ? " — outstanding balance settled." : `, ₱${(outstanding - input.amount).toLocaleString()} still pending remittance.`}`,
             ),
             ...state.notifications,
           ],
@@ -332,7 +337,7 @@ export const useStore = create<AppState>()(
       },
     }),
     {
-      name: "pmvic-demo-store-v2",
+      name: "pmvic-demo-store-v3",
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },

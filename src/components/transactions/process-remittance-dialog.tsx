@@ -91,8 +91,8 @@ export function ProcessRemittanceDialog({
       const remaining = outstanding - numericAmount;
       toast.success(
         remaining <= 0
-          ? `${formatCurrency(numericAmount)} remitted. ${selectedBranch?.name}'s balance is now settled.`
-          : `${formatCurrency(numericAmount)} remitted. ${formatCurrency(remaining)} still outstanding for ${selectedBranch?.name}.`,
+          ? `${formatCurrency(numericAmount)} remitted to ${selectedBranch?.name}. Their balance is now settled.`
+          : `${formatCurrency(numericAmount)} remitted to ${selectedBranch?.name}. ${formatCurrency(remaining)} still pending remittance.`,
       );
       setOpen(false);
       reset();
@@ -108,19 +108,19 @@ export function ProcessRemittanceDialog({
       }}
     >
       <DialogTrigger asChild>
-        {/* {trigger ?? (
+        {trigger ?? (
           <Button>
             <HandCoins /> Process Remittance
           </Button>
-        )} */}
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Process Remittance</DialogTitle>
             <DialogDescription>
-              Record a remittance received from a branch. You may enter the full outstanding amount or a partial
-              payment.
+              Record a remittance paid out to a branch for the transactions they earned. You may pay the full
+              outstanding amount or a partial payment.
             </DialogDescription>
           </DialogHeader>
 
@@ -154,7 +154,7 @@ export function ProcessRemittanceDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="remit-amount">Amount received (PHP)</Label>
+              <Label htmlFor="remit-amount">Amount to remit (PHP)</Label>
               <Input
                 id="remit-amount"
                 type="number"
