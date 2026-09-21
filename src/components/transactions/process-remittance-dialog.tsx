@@ -108,11 +108,11 @@ export function ProcessRemittanceDialog({
       }}
     >
       <DialogTrigger asChild>
-        {trigger ?? (
+        {/* {trigger ?? (
           <Button>
             <HandCoins /> Process Remittance
           </Button>
-        )}
+        )} */}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit}>

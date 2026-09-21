@@ -6,7 +6,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { useStore } from "@/lib/store";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SplashScreen } from "@/components/layout/splash-screen";
 
 export function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -21,15 +21,7 @@ export function Shell({ children }: { children: ReactNode }) {
   }, [hasHydrated, session, router]);
 
   if (!hasHydrated || !session) {
-    return (
-      <div className="flex h-svh w-full items-center justify-center bg-muted/30">
-        <div className="w-full max-w-sm space-y-3 px-6">
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-        </div>
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   return (
